@@ -13,20 +13,20 @@ export const ViewStoryPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const loadStory = async () => {
+      try {
+        const storyData = await getStory(storyId!);
+        setStory(storyData);
+        setError(null);
+      } catch (err: any) {
+        setError(err.response?.data?.error || 'Failed to load story');
+      }
+    };
+
     if (storyId) {
       loadStory();
     }
-  }, [storyId]);
-
-  const loadStory = async () => {
-    try {
-      const storyData = await getStory(storyId!);
-      setStory(storyData);
-      setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load story');
-    }
-  };
+  }, [storyId, getStory]);
 
   const handleDeleteStory = async () => {
     if (window.confirm('Are you sure you want to delete this story?')) {

@@ -1,10 +1,5 @@
 import React from 'react';
-
-interface ComicPanel {
-  url: string;
-  prompt: string;
-  panel_number: number;
-}
+import { ComicPanel } from '../types';
 
 interface ComicStripProps {
   panels: ComicPanel[];

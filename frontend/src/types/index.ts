@@ -11,11 +11,17 @@ export interface Project {
   created_at: string;
 }
 
+export interface ComicPanel {
+  url: string;
+  prompt: string;
+  panel_number: number;
+}
+
 export interface Story {
   id: string;
   project_id: string;
   narrative_text: string;
-  comic_panels: string[];
+  comic_panels: ComicPanel[];
   audio_url?: string;
   tone: string;
   format: string;
