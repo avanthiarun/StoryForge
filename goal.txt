@@ -1,0 +1,223 @@
+Dashboard Architecture Overview
+Yes, this is a completely separate platform you build that connects to Atlassian via their APIs. Think of it like:
+Your Dashboard (Next.js/React) 
+    ↓
+Atlassian OAuth (Jira, Confluence)
+    ↓
+Pull ticket data, comments, commit history
+    ↓
+Gemini API (text generation + image generation)
+    ↓
+Generate story + comic strip panels
+    ↓
+Display everything beautifully
+
+
+---
+
+## **Data Flow (How It Actually Works)**
+
+**1. Authentication → Atlassian OAuth**
+- User logs into your dashboard with "Connect Jira"
+- You get OAuth token → can now read their Jira/Confluence data
+- No MCP server needed—Atlassian has REST APIs you can hit directly
+
+**2. Pulling Data from Jira**
+
+GET /rest/api/3/projects/{projectId}/issues
+→ Returns: tickets, statuses, comments, sprint info, assignees
+You'd filter by:
+
+Date range (last sprint, last month, etc.)
+Project ID
+Status (closed, resolved, etc.)
+Custom fields if needed
+
+Example data you'd extract:
+json{
+  "issue_key": "PROJ-145",
+  "summary": "Fix API timeout bug",
+  "status": "Done",
+  "created": "2025-09-01",
+  "resolved": "2025-09-15",
+  "comments": ["Tried X approach, failed", "Switched to Y, works!"],
+  "assignee": "Alice"
+}
+
+
+**3. Gemini for Story Generation**
+Send this data to Gemini:
+
+"Based on these Jira tickets from Sept 1-15, write a project story narrative:
+- Fixed API timeout (blocked for 2 weeks, creative debugging)
+- Added auth feature (smooth, no blockers)
+- Onboarded new dev
+
+Tell it as an engaging story about the team's journey."
+
+
+Gemini returns: *"In early September, the team faced their biggest challenge: the API kept timing out after 5 minutes. Alice dove deep into the logs..."*
+
+**4. Gemini for Comic Strips**
+For each key moment (breakthrough, blocker, win), generate an image:
+
+Prompt: "Create a 2x2 comic strip panel showing:
+Panel 1: Developer looking confused at laptop (API bug)
+Panel 2: Team discussion with lightbulbs (brainstorming)
+Panel 3: Debugging code (trying solution)
+Panel 4: Team celebrating (victory!)
+Style: Cartoon, cheerful, technical"
+
+
+Gemini's image generation returns 4 panels → display as comic strip.
+
+---
+
+## **Can Your Dashboard Handle This?**
+
+**Short answer: Yes, but with smart architecture.**
+
+Here's the potential bottleneck:
+- Gemini API calls have rate limits (~60 requests/minute for free tier)
+- Image generation takes 10-15 seconds per call
+- If someone requests a story with 5 comic panels, that's 5 sequential API calls (~1-2 minutes)
+
+**Solutions:**
+
+**Option A: Async Job Queue (Best for Scale)**
+
+User clicks "Generate Story"
+    ↓
+Your backend enqueues a job (Bull, Celery, etc.)
+    ↓
+Job runs in background:
+    - Fetch Jira data
+    - Call Gemini for story text
+    - Call Gemini for 4-5 comic panels (sequentially)
+    - Save results to database
+    ↓
+Frontend shows loading state, polls for completion
+    ↓
+Once done, displays story + comic strips
+
+
+This way users don't wait 2+ minutes for a response—the generation happens in the background.
+
+**Option B: Simple/Sync (Good for MVP)**
+
+User clicks "Generate Story"
+    ↓
+Backend immediately:
+    - Fetches Jira data (fast, <1 second)
+    - Calls Gemini for story (5-10 seconds)
+    - Calls Gemini for comic (2-3 images × 10-15 sec each = 30-45 sec)
+    ↓
+User waits ~60 seconds total, sees everything at once
+
+
+This works fine for a prototype/MVP but gets annoying at scale.
+
+---
+
+## **Tech Stack I'd Recommend**
+
+**Frontend:**
+- Next.js (handles both frontend UI + backend API routes)
+- React for dashboard UI
+- Tailwind for styling
+
+**Backend:**
+- Next.js API routes (or Express if you prefer)
+- Atlassian REST API client
+- Gemini SDK (`@google/generative-ai`)
+- Redis + Bull (for job queue) — *only if you go async*
+- PostgreSQL (store generated stories/images)
+
+**Deployment:**
+- Vercel (for Next.js frontend + API routes)
+- Database: Supabase or Firebase (easiest to start)
+
+---
+
+## **What The Dashboard Would Look Like**
+
+Here's a rough user flow:
+
+**Page 1: Projects**
+
++---------------------------------------+
+| StoryBoard Dashboard                  |
++---------------------------------------+
+| Your Projects:                        |
+|                                       |
+| 📊 Project Alpha (Jira)              |
+|    Last story: 2 days ago             |
+|    [Generate Story] [View Stories]    |
+|                                       |
+| 📊 Project Beta (Jira)                |
+|    Last story: Never                  |
+|    [Generate Story] [View Stories]    |
+|                                       |
++---------------------------------------+
+
+
+**Page 2: Generate Story**
+
++---------------------------------------+
+| Generate Story for Project Alpha      |
++---------------------------------------+
+|                                       |
+| Time Range:        [Last Sprint ▼]   |
+| Story Format:      [Narrative ▼]     |
+| Include Comics:    [Yes/No toggle]   |
+| Narration Tone:    [Dramatic ▼]      |
+| Number of Panels:  [4 ▼]             |
+|                                       |
+|              [Generate Story]         |
+|                                       |
++---------------------------------------+
+
+
+**Page 3: View Generated Story**
+
++---------------------------------------+
+| Project Alpha Story - Sprint 9        |
++---------------------------------------+
+|                                       |
+| 📖 The Journey                        |
+|                                       |
+| "In early September, the team faced   |
+|  their biggest challenge..."          |
+|                                       |
+| [Comic Strip - 4 Panels showing:]     |
+| [Panel 1] [Panel 2]                  |
+| [Panel 3] [Panel 4]                  |
+|                                       |
+| 🎙 Listen to Narration               |
+| [Audio Player]                        |
+|                                       |
+| ✨ Metrics:                           |
+| - Issues closed: 12                   |
+| - Bugs fixed: 5                       |
+| - Features shipped: 2                 |
+|                                       |
+| [Share] [Download PDF] [Export]       |
+|                                       |
++---------------------------------------+
+
+One More Thing: No MCP Server Needed
+MCP servers are for Claude integrations—you don't need them here. You're using:
+
+Atlassian REST API directly (via OAuth)
+Gemini API directly
+
+Both have well-documented SDKs you can just import and use.
+
+Next Steps to Build This
+
+Set up Next.js project with Atlassian OAuth
+Create a test route that fetches Jira data
+Connect Gemini API and test story generation
+Test image generation for comic panels
+Build the dashboard UI around it
+Add job queue if needed

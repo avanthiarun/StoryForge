@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { authService } from '../services/auth';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -6,29 +6,6 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    // Handle OAuth callback
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    
-    if (code) {
-      handleCallback(code);
-    }
-  }, []);
-
-  const handleCallback = async (code: string) => {
-    setIsLoading(true);
-    try {
-      await authService.handleCallback(code);
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Login error:', error);
-      alert('Login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleLogin = async () => {
     setIsLoading(true);

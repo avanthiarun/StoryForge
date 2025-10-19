@@ -5,6 +5,7 @@ import { LoadingSpinner } from './components/LoadingSpinner';
 import { Navbar } from './components/Navbar';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
+import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { GenerateStoryPage } from './pages/GenerateStoryPage';
 import { ViewStoryPage } from './pages/ViewStoryPage';
@@ -29,6 +30,10 @@ function App() {
             <Route 
               path="/login" 
               element={user ? <Navigate to="/" replace /> : <LoginPage />} 
+            />
+            <Route 
+              path="/auth/callback" 
+              element={<AuthCallbackPage />} 
             />
             <Route 
               path="/" 

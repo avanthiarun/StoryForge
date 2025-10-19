@@ -12,6 +12,9 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
+    # Set SQLAlchemy database URI
+    app.config['SQLALCHEMY_DATABASE_URI'] = Config.DATABASE_URL
+    
     # Initialize extensions
     db.init_app(app)
     CORS(app, resources={
