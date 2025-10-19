@@ -23,13 +23,15 @@ export const GenerateStoryPage: React.FC = () => {
 
   const handleGenerateStory = async (options: GenerateStoryRequest) => {
     try {
+      console.log('Generating story with options:', options);
       const story = await generateStory(options);
       if (story) {
         navigate(`/story/${story.id}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating story:', error);
-      alert('Failed to generate story. Please try again.');
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to generate story';
+      alert(`Failed to generate story: ${errorMessage}`);
     }
   };
 

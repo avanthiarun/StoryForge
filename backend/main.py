@@ -15,6 +15,9 @@ def create_app():
     # Set SQLAlchemy database URI
     app.config['SQLALCHEMY_DATABASE_URI'] = Config.DATABASE_URL
     
+    # Set JWT secret key
+    app.config['JWT_SECRET_KEY'] = Config.JWT_SECRET_KEY
+    
     # Initialize extensions
     db.init_app(app)
     CORS(app, resources={

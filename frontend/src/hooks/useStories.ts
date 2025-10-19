@@ -30,7 +30,7 @@ export const useStories = () => {
       return newStory;
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to generate story');
-      throw error;
+      throw err;
     } finally {
       setIsLoading(false);
     }

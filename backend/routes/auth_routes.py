@@ -13,7 +13,7 @@ def atlassian_authorize():
     from config import Config
     
     client_id = Config.ATLASSIAN_CLIENT_ID
-    redirect_uri = f"{current_app.config['FRONTEND_URL']}/auth/callback"
+    redirect_uri = f"{Config.FRONTEND_URL}/auth/callback"
     state = str(uuid.uuid4())  # Generate unique state
     
     auth_url = get_atlassian_auth_url(client_id, redirect_uri, state)
@@ -39,12 +39,19 @@ def atlassian_callback():
         # Exchange code for token
         client_id = Config.ATLASSIAN_CLIENT_ID
         client_secret = Config.ATLASSIAN_CLIENT_SECRET
-        redirect_uri = f"{current_app.config['FRONTEND_URL']}/auth/callback"
+        redirect_uri = f"{Config.FRONTEND_URL}/auth/callback"
         
         print(f"Exchanging token with client_id: {client_id[:10]}...")  # Debug log
+        print(f"Using redirect_uri: {redirect_uri}")  # Debug log
         
-        token_response = exchange_code_for_token(code, client_id, client_secret, redirect_uri)
-        print(f"Token response: {token_response}")  # Debug log
+        try:
+            token_response = exchange_code_for_token(code, client_id, client_secret, redirect_uri)
+            print(f"Token response: {token_response}")  # Debug log
+        except Exception as e:
+            print(f"Token exchange error: {str(e)}")  # Debug log
+            import traceback
+            traceback.print_exc()
+            return jsonify({"error": f"Token exchange failed: {str(e)}"}), 400
         
         if 'error' in token_response:
             return jsonify({"error": token_response.get('error_description', 'Token exchange failed')}), 400
@@ -64,13 +71,22 @@ def atlassian_callback():
         cloud_id = get_user_cloud_id(access_token)
         print(f"Cloud ID: {cloud_id}")  # Debug log
         
+        # Extract email from JWT token payload
+        # Atlassian JWT tokens contain email in different fields
+        email = user_info.get('https://atlassian.com/systemAccountEmail') or user_info.get('sub')
+        if not email:
+            print(f"Available user info fields: {list(user_info.keys())}")  # Debug log
+            return jsonify({"error": "No email found in user info"}), 400
+        
+        print(f"Using email: {email}")  # Debug log
+        
         # Create or update user in database
-        user = User.query.filter_by(email=user_info['email']).first()
+        user = User.query.filter_by(email=email).first()
         
         if not user:
             user = User(
-                email=user_info['email'],
-                atlassian_user_id=user_info['account_id'],
+                email=email,
+                atlassian_user_id=user_info.get('sub'),
                 atlassian_access_token=access_token,
                 cloud_id=cloud_id
             )

@@ -32,40 +32,70 @@ def generate_story():
     include_comics = data.get('include_comics', True)
     num_panels = data.get('num_panels', 4)
     
+    print(f"=== STORY GENERATION START ===")
+    print(f"Project ID: {project_id}")
+    print(f"Time range: {time_range}")
+    print(f"Tone: {tone}")
+    print(f"Format: {format_type}")
+    print(f"Include comics: {include_comics}")
+    print(f"Num panels: {num_panels}")
+    
     try:
         project = Project.query.filter_by(id=project_id, user_id=user.id).first()
         if not project:
+            print("ERROR: Project not found")
             return jsonify({"error": "Project not found"}), 404
         
+        print(f"Found project: {project.project_name} (key: {project.jira_project_key})")
+        
         # Fetch Jira data
+        print("Fetching Jira issues...")
         jira = JiraService(user.atlassian_access_token, user.cloud_id)
         issues = jira.get_issues(project.jira_project_key, time_range)
         formatted_issues = jira.format_issues_for_story(issues)
         
+        print(f"Formatted {len(formatted_issues)} issues for story generation")
+        
         if not formatted_issues:
+            print("ERROR: No issues found in this project")
             return jsonify({"error": "No issues found in this project"}), 400
         
         # Generate story
+        print("Generating story with Gemini...")
         gemini = GeminiService()
         narrative_text = gemini.generate_story(formatted_issues, format_type, tone)
+        
+        if not narrative_text:
+            print("ERROR: Failed to generate story text")
+            return jsonify({"error": "Failed to generate story text"}), 500
+        
+        print(f"Generated story text: {len(narrative_text)} characters")
         
         # Generate comic (optional)
         comic_panels = []
         if include_comics:
+            print("Generating comic prompts...")
             comic_prompts = gemini.generate_comic_prompts(formatted_issues, num_panels)
+            print(f"Generated {len(comic_prompts)} comic prompts")
+            
             image_service = ImageService()
             comic_panels = image_service.generate_placeholder_panels(comic_prompts, num_panels)
+            print(f"Generated {len(comic_panels)} comic panels")
         
         # Generate narration
+        print("Generating audio narration...")
         elevenlabs = ElevenLabsService()
         audio_response = elevenlabs.generate_narration(narrative_text, tone=tone)
         
         audio_url = None
         if audio_response.get('status') == 'success':
-            # In production, save to cloud storage and get URL
             audio_url = f"/api/stories/{uuid.uuid4()}/audio"
+            print("Audio generation successful")
+        else:
+            print(f"Audio generation failed: {audio_response}")
         
         # Save story to database
+        print("Saving story to database...")
         story = Story(
             user_id=user.id,
             project_id=project.id,
@@ -80,6 +110,9 @@ def generate_story():
         )
         db.session.add(story)
         db.session.commit()
+        
+        print(f"Story saved with ID: {story.id}")
+        print("=== STORY GENERATION SUCCESS ===")
         
         return jsonify({
             "success": True,
@@ -96,7 +129,9 @@ def generate_story():
         }), 201
     
     except Exception as e:
-        print(f"Error generating story: {e}")
+        print(f"ERROR generating story: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 

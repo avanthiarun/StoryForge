@@ -46,14 +46,27 @@ def exchange_code_for_token(code, client_id, client_secret, redirect_uri):
 
 
 def get_user_info(access_token):
-    """Get user info from Atlassian"""
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
+    """Get user info from Atlassian JWT token"""
+    import base64
+    import json
     
-    response = requests.get(ATLASSIAN_USER_URL, headers=headers)
-    return response.json()
+    try:
+        # Decode the JWT token to get user info
+        # JWT tokens have 3 parts separated by dots: header.payload.signature
+        parts = access_token.split('.')
+        if len(parts) != 3:
+            return {"error": "Invalid token format"}
+        
+        # Decode the payload (second part)
+        payload = parts[1]
+        # Add padding if needed
+        payload += '=' * (4 - len(payload) % 4)
+        decoded_payload = base64.urlsafe_b64decode(payload)
+        user_info = json.loads(decoded_payload)
+        
+        return user_info
+    except Exception as e:
+        return {"error": f"Failed to decode token: {str(e)}"}
 
 
 def get_user_cloud_id(access_token):

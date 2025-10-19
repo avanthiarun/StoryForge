@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -6,9 +6,17 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 export const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
     const handleCallback = async () => {
+      // Prevent duplicate calls
+      if (hasProcessed.current) {
+        return;
+      }
+      
+      hasProcessed.current = true;
+      
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
@@ -19,8 +27,10 @@ export const AuthCallbackPage: React.FC = () => {
           return;
         }
 
+        console.log('Processing authentication callback...');
         await authService.handleCallback(code);
         
+        console.log('Authentication successful, redirecting...');
         // Clear URL parameters and redirect to home
         window.history.replaceState({}, document.title, '/');
         navigate('/', { replace: true });

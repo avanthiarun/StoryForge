@@ -63,4 +63,7 @@ def sync_projects():
         return jsonify({"success": True, "message": f"Synced {len(jira_projects)} projects"})
     
     except Exception as e:
+        print(f"Error syncing projects: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500

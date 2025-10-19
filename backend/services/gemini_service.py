@@ -4,11 +4,14 @@ from config import Config
 class GeminiService:
     def __init__(self):
         genai.configure(api_key=Config.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel('gemini-pro')
-        self.vision_model = genai.GenerativeModel('gemini-pro-vision')
+        self.model = genai.GenerativeModel('gemini-2.0-flash')
+        self.vision_model = genai.GenerativeModel('gemini-2.0-flash')
     
     def generate_story(self, issues_data, format_type="narrative", tone="engaging"):
         """Generate narrative story from Jira data"""
+        
+        print(f"Gemini: Generating story with {len(issues_data)} issues")
+        print(f"Gemini: Format type: {format_type}, Tone: {tone}")
         
         # Format issues into readable text
         issues_text = "\n".join([
@@ -16,6 +19,8 @@ class GeminiService:
             f"  Comments: {' | '.join(issue['comments'][:2]) if issue['comments'] else 'No comments'}"
             for issue in issues_data
         ])
+        
+        print(f"Gemini: Issues text preview: {issues_text[:200]}...")
         
         if format_type == "narrative":
             prompt = f"""You are a creative technical storyteller. Based on these Jira tickets, write an engaging narrative story (2-3 paragraphs) about the team's project journey. Make it feel like a movie or novel, highlighting key challenges, breakthroughs, and team dynamics.
@@ -45,8 +50,17 @@ Tone: {tone}
 
 Write the story now:"""
         
-        response = self.model.generate_content(prompt)
-        return response.text
+        print("Gemini: Sending request to Gemini API...")
+        try:
+            response = self.model.generate_content(prompt)
+            result = response.text
+            print(f"Gemini: Successfully generated story ({len(result)} characters)")
+            return result
+        except Exception as e:
+            print(f"Gemini: Error generating story: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
     
     def generate_comic_prompts(self, issues_data, num_panels=4):
         """Generate prompts for comic strip panels"""
